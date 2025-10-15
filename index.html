@@ -91,25 +91,43 @@
     const ctx = canvas.getContext('2d');
 
     function renderPage(num) {
-      pageRendering = true;
-      pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({ scale: scale });
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+  pageRendering = true;
+  pdfDoc.getPage(num).then(function(page) {
+    const viewport = page.getViewport({ scale: scale });
 
-        const renderContext = { canvasContext: ctx, viewport: viewport };
-        const renderTask = page.render(renderContext);
+    // ✅ Amélioration de la qualité : tenir compte du devicePixelRatio
+    const outputScale = window.devicePixelRatio || 1;
 
-        renderTask.promise.then(function () {
-          pageRendering = false;
-          document.getElementById('page_num').textContent = pageNum;
-          if (pageNumPending !== null) {
-            renderPage(pageNumPending);
-            pageNumPending = null;
-          }
-        });
-      });
-    }
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = Math.floor(viewport.width * outputScale);
+    canvas.height = Math.floor(viewport.height * outputScale);
+    canvas.style.width = Math.floor(viewport.width) + "px";
+    canvas.style.height = Math.floor(viewport.height) + "px";
+
+    const transform = outputScale !== 1
+      ? [outputScale, 0, 0, outputScale, 0, 0]
+      : null;
+
+    const renderContext = {
+      canvasContext: ctx,
+      transform: transform,
+      viewport: viewport
+    };
+
+    const renderTask = page.render(renderContext);
+    renderTask.promise.then(function() {
+      pageRendering = false;
+      document.getElementById('page_num').textContent = pageNum;
+      if (pageNumPending !== null) {
+        renderPage(pageNumPending);
+        pageNumPending = null;
+      }
+    });
+  });
+}
+
 
     function queueRenderPage(num) {
       if (pageRendering) {
