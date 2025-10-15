@@ -1,202 +1,96 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mon CV - Visionneuse PDF</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mon CV</title>
   <style>
+    /* 🔹 Style global */
     * {
       box-sizing: border-box;
     }
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
+      background: #f4f4f4;
+      color: #222;
+      font-family: "Segoe UI", Arial, sans-serif;
       display: flex;
       flex-direction: column;
       height: 100vh;
-      background: #f8f8f8;
-      color: #222;
     }
 
-    #controls {
-      padding: 10px 16px;
-      background: #f2f2f2;
+    /* 🔹 Barre supérieure */
+    header {
+      background: #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      justify-content: space-between;
+      padding: 10px 16px;
+      position: sticky;
+      top: 0;
       z-index: 10;
     }
 
-    button {
-      padding: 6px 12px;
-      border: none;
-      background: #007bff;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background 0.2s;
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+      color: #007bff;
     }
 
-    button:hover {
-      background: #0056b3;
-    }
-
-    #viewer {
-      flex: 1;
-      overflow: auto;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #ddd;
-    }
-
-    canvas {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      margin: 20px;
-      background: white;
-      max-width: 95%;
-      height: auto;
-      border-radius: 6px;
-    }
-
-    a#download {
-      margin-left: auto;
+    /* 🔹 Bouton de téléchargement */
+    a.download-btn {
       text-decoration: none;
       background: #28a745;
       color: white;
-      padding: 6px 12px;
-      border-radius: 4px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
       transition: background 0.2s;
     }
 
-    a#download:hover {
+    a.download-btn:hover {
       background: #1f7d34;
     }
 
-    @media (max-width: 600px) {
-      #controls {
-        justify-content: center;
+    /* 🔹 Zone du PDF */
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #e9ecef;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+    }
+
+    /* 🔹 Version mobile */
+    @media (max-width: 768px) {
+      header h1 {
+        font-size: 16px;
       }
-      button, a#download {
-        flex: 1 1 auto;
-        text-align: center;
+      a.download-btn {
+        font-size: 13px;
+        padding: 6px 10px;
       }
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <button id="prev">◀️ Précédent</button>
-    <button id="next">Suivant ▶️</button>
-    <span>Page : <span id="page_num">0</span> / <span id="page_count">0</span></span>
-    <button id="zoomOut">➖ Zoom -</button>
-    <button id="zoomIn">➕ Zoom +</button>
-    <a id="download" href="cv.pdf" target="_blank">📄 Télécharger le CV</a>
-  </div>
+  <header>
+    <h1>📄 Mon CV</h1>
+    <a href="cv.pdf" class="download-btn" download>Télécharger le CV</a>
+  </header>
 
-  <div id="viewer">
-    <canvas id="pdf-canvas"></canvas>
-  </div>
-
-  <!-- PDF.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script>
-    const url = 'cv.pdf'; // ton fichier PDF
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-    let pdfDoc = null,
-        pageNum = 1,
-        scale = 1.2,
-        pageRendering = false,
-        pageNumPending = null;
-
-    const canvas = document.getElementById('pdf-canvas');
-    const ctx = canvas.getContext('2d');
-
-    // --- Fonction pour rendre la page ---
-    function renderPage(num) {
-      pageRendering = true;
-      pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({ scale: scale });
-
-        // ✅ haute qualité (Retina / 4K)
-        const outputScale = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = Math.floor(viewport.width) + "px";
-        canvas.style.height = Math.floor(viewport.height) + "px";
-
-        const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
-
-        const renderContext = {
-          canvasContext: ctx,
-          transform: transform,
-          viewport: viewport
-        };
-
-        const renderTask = page.render(renderContext);
-        renderTask.promise.then(function() {
-          pageRendering = false;
-          document.getElementById('page_num').textContent = pageNum;
-          if (pageNumPending !== null) {
-            renderPage(pageNumPending);
-            pageNumPending = null;
-          }
-        });
-      });
-    }
-
-    function queueRenderPage(num) {
-      if (pageRendering) {
-        pageNumPending = num;
-      } else {
-        renderPage(num);
-      }
-    }
-
-    // --- Navigation ---
-    document.getElementById('prev').addEventListener('click', () => {
-      if (pageNum <= 1) return;
-      pageNum--;
-      queueRenderPage(pageNum);
-    });
-
-    document.getElementById('next').addEventListener('click', () => {
-      if (pageNum >= pdfDoc.numPages) return;
-      pageNum++;
-      queueRenderPage(pageNum);
-    });
-
-    // --- Zoom ---
-    document.getElementById('zoomIn').addEventListener('click', () => {
-      scale = Math.min(scale + 0.2, 3);
-      queueRenderPage(pageNum);
-    });
-
-    document.getElementById('zoomOut').addEventListener('click', () => {
-      scale = Math.max(scale - 0.2, 0.6);
-      queueRenderPage(pageNum);
-    });
-
-    // --- Chargement du PDF ---
-    pdfjsLib.getDocument(url).promise.then(function(pdf) {
-      pdfDoc = pdf;
-      document.getElementById('page_count').textContent = pdf.numPages;
-      renderPage(pageNum);
-    }).catch(function(err) {
-      document.getElementById('viewer').innerHTML = `
-        <p style="padding:20px;color:red;text-align:center;">
-          ❌ Erreur lors du chargement du PDF : ${err.message}
-        </p>
-        <p style="text-align:center;">
-          <a href="${url}" target="_blank">Ouvrir ou télécharger le CV</a>
-        </p>`;
-    });
-  </script>
+  <main>
+    <!-- ✅ Affichage natif haute qualité -->
+    <iframe src="cv.pdf#zoom=page-fit" title="Visionneuse PDF"></iframe>
+  </main>
 </body>
 </html>
