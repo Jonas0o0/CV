@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mon CV - Visionneuse PDF</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #f8f8f8;
+    }
+    #controls {
+      padding: 8px 16px;
+      background: #f2f2f2;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    #viewer {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #ddd;
+    }
+    canvas {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      margin: 20px;
+      background: white;
+    }
+    button {
+      padding: 6px 12px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    a#download {
+      margin-left: auto;
+      text-decoration: none;
+      background: #28a745;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+    }
+    a#download:hover {
+      background: #1f7d34;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="prev">◀️ Précédent</button>
+    <button id="next">Suivant ▶️</button>
+    <span>Page : <span id="page_num">0</span> / <span id="page_count">0</span></span>
+    <a id="download" href="cv.pdf" target="_blank">📄 Télécharger le CV</a>
+  </div>
+
+  <div id="viewer">
+    <canvas id="pdf-canvas"></canvas>
+  </div>
+
+  <!-- Charge PDF.js depuis le CDN officiel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    const url = 'cv.pdf'; // ton fichier PDF
+
+    // Configure le worker PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    let pdfDoc = null,
+        pageNum = 1,
+        pageRendering = false,
+        pageNumPending = null;
+    const scale = 1.25; // niveau de zoom
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function renderPage(num) {
+      pageRendering = true;
+      pdfDoc.getPage(num).then(function(page) {
+        const viewport = page.getViewport({ scale: scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = { canvasContext: ctx, viewport: viewport };
+        const renderTask = page.render(renderContext);
+
+        renderTask.promise.then(function () {
+          pageRendering = false;
+          document.getElementById('page_num').textContent = pageNum;
+          if (pageNumPending !== null) {
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+    }
+
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        renderPage(num);
+      }
+    }
+
+    function onPrevPage() {
+      if (pageNum <= 1) return;
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+
+    function onNextPage() {
+      if (pageNum >= pdfDoc.numPages) return;
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+
+    document.getElementById('prev').addEventListener('click', onPrevPage);
+    document.getElementById('next').addEventListener('click', onNextPage);
+
+    // Charge le document PDF
+    pdfjsLib.getDocument(url).promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById('page_count').textContent = pdfDoc.numPages;
+      renderPage(pageNum);
+    }).catch(function(err) {
+      document.getElementById('viewer').innerHTML = `
+        <p style="padding:20px;color:red;">Erreur lors du chargement du PDF : ${err.message}</p>
+        <p><a href="${url}" target="_blank">Ouvrir ou télécharger le CV</a></p>`;
+    });
+  </script>
+</body>
+</html>
